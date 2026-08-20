@@ -22,12 +22,24 @@ function candles(interval, from, to, limit) {
   return jfetch(u);
 }
 
+async function candlesChunked(interval, from, to) {
+  const MAX_POINTS = 1000;
+  const step = { "1m": 60, "1h": 3600, "1d": 86400 }[interval] * MAX_POINTS;
+  const out = [];
+  for (let s = from; s < to; s += step) {
+    const e = Math.min(s + step - 1, to);
+    const part = await candles(interval, s, e, null);
+    out.push(...(part || []));
+  }
+  return out;
+}
+
 const now = Math.floor(Date.now() / 1000);
 const dayStart = Math.floor(now / DAY) * DAY;
 const prevStart = dayStart - DAY;
 
 const [m1, h48, d22] = await Promise.all([
-  candles("1m", dayStart, now, null),
+  candlesChunked("1m", dayStart, now),
   candles("1h", prevStart, now, 60),
   candles("1d", null, null, 22)
 ]);
